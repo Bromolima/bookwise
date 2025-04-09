@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/book-wise/auth"
 	"github.com/book-wise/database"
 	"github.com/book-wise/models"
 	"github.com/book-wise/repositories"
@@ -27,7 +29,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = user.Validate(); err != nil {
+	if err = user.Validate(models.MethodCreate); err != nil {
 		responses.Err(w, http.StatusBadRequest, err)
 		return
 	}
@@ -103,6 +105,17 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userTokenID, err := auth.ExtractUserID(r)
+	if err != nil {
+		responses.Err(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if userID != userTokenID {
+		responses.Err(w, http.StatusForbidden, errors.New("Not possible to update another user"))
+		return
+	}
+
 	requestBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		responses.Err(w, http.StatusUnprocessableEntity, err)
@@ -115,7 +128,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = user.Validate(); err != nil {
+	if err = user.Validate(models.MethodUpdate); err != nil {
 		responses.Err(w, http.StatusBadRequest, err)
 		return
 	}
@@ -141,6 +154,17 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseUint(params["userId"], 10, 64)
 	if err != nil {
 		responses.Err(w, http.StatusBadRequest, err)
+		return
+	}
+
+	userTokenID, err := auth.ExtractUserID(r)
+	if err != nil {
+		responses.Err(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if userID != userTokenID {
+		responses.Err(w, http.StatusForbidden, errors.New("Not possible to delete another user"))
 		return
 	}
 

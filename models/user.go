@@ -6,6 +6,14 @@ import (
 	"time"
 
 	"github.com/badoux/checkmail"
+	"github.com/book-wise/secutiry"
+)
+
+var (
+	MethodCreate = "create"
+	MethodGet    = "get"
+	MethodUpdate = "update"
+	MethodLogin  = "login"
 )
 
 type User struct {
@@ -14,8 +22,8 @@ type User struct {
 	Username  string    `json:"username,omitempty"`
 	Email     string    `json:"email,omitempty"`
 	Passsword string    `json:"password,omitempty"`
-	CreatedAt time.Time `json:"createdAt,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (u *User) validate() error {
@@ -42,18 +50,31 @@ func (u *User) validate() error {
 	return nil
 }
 
-func (u *User) trim() {
+func (u *User) trim(method string) error {
 	u.Name = strings.TrimSpace(u.Name)
 	u.Username = strings.TrimSpace(u.Username)
 	u.Email = strings.TrimSpace(u.Email)
-	u.Passsword = strings.TrimSpace(u.Passsword)
+
+	if method == MethodCreate {
+		hashedPassword, err := secutiry.Hash(u.Passsword)
+		if err != nil {
+			return err
+		}
+
+		u.Passsword = string(hashedPassword)
+	}
+
+	return nil
 }
 
-func (u *User) Validate() error {
+func (u *User) Validate(method string) error {
 	if err := u.validate(); err != nil {
 		return err
 	}
 
-	u.trim()
+	if err := u.trim(method); err != nil {
+		return err
+	}
+
 	return nil
 }
